@@ -6,6 +6,7 @@ import {
   Eye,
   EyeOff,
   FileText,
+  Github,
   Image,
   LayoutDashboard,
   RefreshCw,
@@ -20,7 +21,7 @@ import { parseConfigValue, QrScanner } from './qr.js'
 import { renderApp, statusPresentation } from './views.js'
 import './styles.css'
 
-const iconSet = { Activity, BellRing, Camera, Eye, EyeOff, FileText, Image, LayoutDashboard, RefreshCw, RotateCw, ScanLine, Save, Settings2, Trash2 }
+const iconSet = { Activity, BellRing, Camera, Eye, EyeOff, FileText, Github, Image, LayoutDashboard, RefreshCw, RotateCw, ScanLine, Save, Settings2, Trash2 }
 const app = document.querySelector('#app')
 const MAX_LOG_LINES = 200
 const MAX_LOG_BYTES = 32 * 1024

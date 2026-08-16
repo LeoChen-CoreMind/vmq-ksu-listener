@@ -77,6 +77,16 @@ test('renders the overview immediately and refreshes queue state silently', asyn
   await expect(page.getByTestId('failed-count')).toHaveText('1')
 })
 
+test('links to the public source repository from the overview', async ({ page }) => {
+  await installMock(page)
+  await page.goto('/')
+  const link = page.getByTestId('source-link')
+  await expect(link).toHaveText('开源地址')
+  await expect(link).toHaveAttribute('href', 'https://github.com/LeoChen-CoreMind/vmq-ksu-listener')
+  await expect(link).toHaveAttribute('target', '_blank')
+  await expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+})
+
 test('shows an unhealthy listener even while the framework remains connected', async ({ page }) => {
   await installMock(page, {
     status: {

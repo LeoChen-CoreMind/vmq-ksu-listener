@@ -175,6 +175,10 @@ button:disabled { cursor: wait; opacity: .58; }
 .inline-error, .command-result { min-height: 20px; margin-top: 10px; font-size: 13px; line-height: 1.45; }
 .inline-error { color: var(--red); }
 .command-result { color: var(--green); }
+.source-link { display: inline-flex; min-height: 36px; align-items: center; gap: 7px; margin-top: 8px; color: var(--green); font-size: 13px; font-weight: 700; line-height: 1.4; text-decoration: none; overflow-wrap: anywhere; }
+.source-link:hover { text-decoration: underline; }
+.source-link:focus-visible { outline: 3px solid #badcf1; outline-offset: 3px; }
+.source-link svg { width: 17px; height: 17px; flex: 0 0 auto; }
 
 .icon-actions { display: flex; gap: 8px; }
 pre {
