@@ -1,6 +1,7 @@
 import { exec } from 'kernelsu'
 
 const CONTROL_PATH = '/data/adb/modules/vmq_ksu/bin/vmqctl'
+const SOURCE_REPOSITORY_URL = 'https://github.com/LeoChen-CoreMind/vmq-ksu-listener'
 const COMMANDS = new Set([
   'status',
   'config-get',
@@ -91,4 +92,22 @@ export async function writeConfig(config, { timeoutMs = DEFAULT_TIMEOUT_MS } = {
   return execute(`${CONTROL_PATH} config-set`, {
     env: { VMQ_CONFIG_B64: encodeBase64Utf8(JSON.stringify(config)) },
   }, timeoutMs, [key])
+}
+
+export async function openExternalUrl(url, { timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
+  if (url !== SOURCE_REPOSITORY_URL) throw new BridgeError('unsupported', '不支持打开该外部地址')
+  let timer
+  try {
+    const quotedUrl = `'${url.replaceAll("'", "'\\''")}'`
+    const command = `am start --user 0 -a android.intent.action.VIEW -c android.intent.category.BROWSABLE -d ${quotedUrl}`
+    const operation = Promise.resolve().then(() => bridgeExec(command))
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new BridgeError('timeout', '打开外部浏览器超时')), timeoutMs)
+    })
+    const result = await Promise.race([operation, timeout])
+    if (!result || typeof result.errno !== 'number') throw new BridgeError('protocol', 'KernelSU 返回了无效结果')
+    if (result.errno !== 0) throw new BridgeError('exec', result.stderr || '无法打开外部浏览器')
+  } finally {
+    clearTimeout(timer)
+  }
 }

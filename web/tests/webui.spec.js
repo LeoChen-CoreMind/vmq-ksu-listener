@@ -85,6 +85,12 @@ test('links to the public source repository from the overview', async ({ page })
   await expect(link).toHaveAttribute('href', 'https://github.com/LeoChen-CoreMind/vmq-ksu-listener')
   await expect(link).toHaveAttribute('target', '_blank')
   await expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  const currentUrl = page.url()
+  await link.click()
+  await expect.poll(() => page.evaluate(() => globalThis.__VMQ_CALLS__.map(({ command }) => command))).toContainEqual(
+    "am start --user 0 -a android.intent.action.VIEW -c android.intent.category.BROWSABLE -d 'https://github.com/LeoChen-CoreMind/vmq-ksu-listener'",
+  )
+  expect(page.url()).toBe(currentUrl)
 })
 
 test('shows an unhealthy listener even while the framework remains connected', async ({ page }) => {

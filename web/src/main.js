@@ -16,7 +16,7 @@ import {
   Settings2,
   Trash2,
 } from 'lucide'
-import { runControl, writeConfig } from './bridge.js'
+import { openExternalUrl, runControl, writeConfig } from './bridge.js'
 import { parseConfigValue, QrScanner } from './qr.js'
 import { renderApp, statusPresentation } from './views.js'
 import './styles.css'
@@ -30,6 +30,7 @@ const LOG_REFRESH_MS = 5000
 const UPTIME_REFRESH_MS = 1000
 const STATUS_CACHE_KEY = 'vmq.lastStatus'
 const AUTO_LOG_REFRESH_KEY = 'vmq.autoLogRefresh'
+const SOURCE_REPOSITORY_URL = 'https://github.com/LeoChen-CoreMind/vmq-ksu-listener'
 
 const state = {
   activeTab: 'overview', status: readCachedStatus(), config: null, desiredOverride: null,
@@ -74,6 +75,7 @@ function bindEvents() {
   document.querySelectorAll('[data-tab]').forEach((button) => button.addEventListener('click', () => switchTab(button.dataset.tab)))
   document.querySelectorAll('[data-command]').forEach((button) => button.addEventListener('click', () => handleCommand(button.dataset.command)))
   document.querySelector('[data-action="service-toggle"]')?.addEventListener('change', handleServiceToggle)
+  document.querySelector('[data-testid="source-link"]')?.addEventListener('click', openSourceRepository)
   document.querySelector('[data-action="toggle-key"]')?.addEventListener('click', (event) => {
     const input = document.querySelector('input[name="key"]')
     if (!input) return
@@ -99,6 +101,15 @@ function bindEvents() {
     if (state.autoLogRefresh) startLogRefresh(true)
     else stopLogRefresh()
   })
+}
+
+async function openSourceRepository(event) {
+  event.preventDefault()
+  try {
+    await openExternalUrl(SOURCE_REPOSITORY_URL)
+  } catch {
+    window.open(SOURCE_REPOSITORY_URL, '_blank', 'noopener,noreferrer')
+  }
 }
 
 function patchStatus() {
