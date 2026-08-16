@@ -1,0 +1,1 @@
+{"baseUrl":"https://vpay.leochen.cyou","key":"CHANGE_ME","enabled":false,"wechatEnabled":true,"wecomEnabled":true,"alipayEnabled":true,"heartbeatSeconds":50,"connectTimeoutSeconds":10,"readTimeoutSeconds":30,"maxRetries":8,"logLevel":"info"}

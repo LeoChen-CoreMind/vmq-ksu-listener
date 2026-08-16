@@ -1,0 +1,20 @@
+{
+  "name": "vmq-ksu-webui",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "@zxing/browser": "^0.1.5",
+    "kernelsu": "^1.0.6",
+    "lucide": "^0.468.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "vite": "^6.0.5"
+  }
+}

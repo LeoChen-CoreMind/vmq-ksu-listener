@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f4f6f5" />
+    <title>V免签通知监听</title>
+    <style>
+      html,body{margin:0;min-height:100%;background:#f4f6f5;color:#17211c;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+      .boot-fatal{width:min(calc(100% - 32px),560px);margin:0 auto;padding:calc(32px + env(safe-area-inset-top)) 0 32px}
+      .boot-fatal h1{margin:0;font-size:22px;letter-spacing:0}.boot-fatal p{margin:8px 0 0;color:#66716a;line-height:1.55}
+      .boot-fatal button{margin-top:20px;min-height:42px;padding:0 16px;border:0;border-radius:6px;background:#1f754b;color:#fff;font:inherit;font-weight:650}
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <section id="boot-fatal" class="boot-fatal" data-testid="fatal-error" hidden>
+      <h1>页面加载失败</h1><p id="boot-fatal-message">WebUI 未能启动</p>
+      <button type="button" onclick="location.reload()">重新加载</button>
+    </section>
+    <script>
+      (() => {
+        const showFatal = (reason) => {
+          if (document.documentElement.dataset.vmqReady === 'true') return
+          const app = document.querySelector('#app')
+          const fatal = document.querySelector('#boot-fatal')
+          const message = document.querySelector('#boot-fatal-message')
+          if (app) app.hidden = true
+          if (message) message.textContent = String(reason || 'WebUI 未能启动')
+          if (fatal) fatal.hidden = false
+        }
+        window.__VMQ_SHOW_FATAL__ = showFatal
+        window.addEventListener('error', (event) => {
+          const reason = event.target?.tagName === 'SCRIPT' ? '页面脚本加载失败' : event.message
+          showFatal(reason)
+        }, true)
+        window.addEventListener('unhandledrejection', (event) => showFatal(event.reason?.message || event.reason))
+        setTimeout(() => showFatal('页面资源加载超时'), 4000)
+      })()
+    </script>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

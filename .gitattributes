@@ -1,0 +1,8 @@
+*.sh text eol=lf
+vmqctl text eol=lf
+update-binary text eol=lf
+*.ps1 text eol=crlf
+*.java text eol=lf
+*.js text eol=lf
+*.css text eol=lf
+*.md text eol=lf

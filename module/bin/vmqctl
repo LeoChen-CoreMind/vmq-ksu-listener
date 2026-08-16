@@ -1,0 +1,24 @@
+#!/system/bin/sh
+set -eu
+MODDIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+ROOT=${VMQ_ROOT:-/data/adb/vmq_ksu}
+APP=/system/bin/app_process64
+if [ ! -x "$APP" ]; then
+  echo '{"ok":false,"error":"app_process64 不可用"}'
+  exit 1
+fi
+if [ "${1:-}" = config-set ]; then
+  if [ -n "${VMQ_CONFIG_B64:-}" ]; then
+    printf '%s' "$VMQ_CONFIG_B64" | base64 -d | env -u VMQ_CONFIG_B64 -u VMQ_CONFIG_JSON CLASSPATH="$MODDIR/dex/vmq-listener.dex" \
+      "$APP" /system/bin com.vmq.ksu.ControlMain --root "$ROOT" --module "$MODDIR" "$@"
+  elif [ -n "${VMQ_CONFIG_JSON:-}" ]; then
+    printf '%s' "$VMQ_CONFIG_JSON" | env -u VMQ_CONFIG_B64 -u VMQ_CONFIG_JSON CLASSPATH="$MODDIR/dex/vmq-listener.dex" \
+      "$APP" /system/bin com.vmq.ksu.ControlMain --root "$ROOT" --module "$MODDIR" "$@"
+  else
+    echo '{"ok":false,"error":"必须提供 VMQ_CONFIG_B64"}'
+    exit 1
+  fi
+else
+  CLASSPATH="$MODDIR/dex/vmq-listener.dex" "$APP" /system/bin com.vmq.ksu.ControlMain \
+    --root "$ROOT" --module "$MODDIR" "$@"
+fi
