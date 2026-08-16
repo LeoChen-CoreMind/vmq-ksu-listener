@@ -6,7 +6,7 @@
     [switch]$CapturePaymentBaseline,
     [switch]$VerifyPayment,
     [switch]$Rollback,
-    [string]$Serial = 'debbff75',
+    [Parameter(Mandatory = $true)][string]$Serial,
     [string]$PaymentEvidence
 )
 
@@ -36,7 +36,6 @@ function Invoke-Root([string]$Command) {
 }
 
 function Assert-Preflight {
-    if ($Serial -ne 'debbff75') { throw "Expected serial debbff75; received $Serial" }
     if ((Invoke-Adb get-state | Select-Object -Last 1).Trim() -ne 'device') { throw 'ADB state is not device' }
     if ((Invoke-Root 'id') -notmatch 'uid=0\(root\)') { throw 'su does not provide UID 0' }
     if ((Invoke-Adb shell getprop ro.build.version.sdk | Select-Object -Last 1).Trim() -ne '35') { throw 'Android API 35 is required' }

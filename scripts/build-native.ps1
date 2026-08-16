@@ -4,7 +4,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $moduleRoot = Split-Path -Parent $PSScriptRoot
-$ndk = "$env:LOCALAPPDATA/Android/Sdk/ndk/27.3.13750724"
+$ndk = if ($env:ANDROID_NDK_HOME) { $env:ANDROID_NDK_HOME } else { "$env:LOCALAPPDATA/Android/Sdk/ndk/27.3.13750724" }
 $clang = Join-Path $ndk 'toolchains/llvm/prebuilt/windows-x86_64/bin/clang.exe'
 $output = Join-Path $moduleRoot 'module/bin/vmqd'
 $source = Join-Path $moduleRoot 'native/src/vmqd.c'

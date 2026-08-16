@@ -1,10 +1,12 @@
 ﻿param(
     [string]$Staging,
     [string]$Zip,
-    [string]$Serial = 'debbff75'
+    [Parameter(Mandatory = $true)][string]$Serial
 )
 
 $ErrorActionPreference = 'Stop'
+& (Join-Path $PSScriptRoot 'verify-static.ps1') -Staging $Staging -Zip $Zip
+if ($LASTEXITCODE -ne 0) { throw 'static verification failed' }
 if ((& adb -s $Serial get-state 2>$null) -ne 'device') { throw "ADB device is unavailable: $Serial" }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $temporary = $null
@@ -54,7 +56,8 @@ foreach ($script in $scripts) {
     & adb -s $Serial shell su -c "sh -n '$remote'; rm -f '$remote'"
     if ($LASTEXITCODE -ne 0) { throw "Android sh syntax failed: $($script.Name)" }
 }
-$readelf = "$env:LOCALAPPDATA/Android/Sdk/ndk/27.3.13750724/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-readelf.exe"
+$ndkRoot = if ($env:ANDROID_NDK_HOME) { $env:ANDROID_NDK_HOME } else { "$env:LOCALAPPDATA/Android/Sdk/ndk/27.3.13750724" }
+$readelf = Join-Path $ndkRoot 'toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-readelf.exe'
 $header = & $readelf -h (Join-Path $root 'bin/vmqd') 2>&1 | Out-String
 if ($LASTEXITCODE -ne 0 -or $header -notmatch 'AArch64' -or $header -notmatch 'DYN') { throw 'vmqd is not an arm64 PIE executable' }
 $dex = [IO.File]::ReadAllBytes((Join-Path $root 'dex/vmq-listener.dex'))

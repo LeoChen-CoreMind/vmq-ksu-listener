@@ -19,6 +19,9 @@ try {
 Remove-Item -LiteralPath $staging -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $staging, $dist | Out-Null
 Copy-Item (Join-Path $source '*') $staging -Recurse -Force
+if (Test-Path (Join-Path $moduleRoot 'LICENSE')) {
+    Copy-Item (Join-Path $moduleRoot 'LICENSE') (Join-Path $staging 'LICENSE') -Force
+}
 New-Item -ItemType Directory -Force (Join-Path $staging 'fixtures') | Out-Null
 Copy-Item (Join-Path $moduleRoot 'fixtures/notifications.json') (Join-Path $staging 'fixtures/notifications.json') -Force
 $scripts = Get-ChildItem $staging -Recurse -File | Where-Object { $_.Extension -eq '.sh' -or $_.Name -eq 'vmqctl' -or $_.Name -eq 'update-binary' }
@@ -27,7 +30,7 @@ foreach ($script in $scripts) {
     $text = [IO.File]::ReadAllText($script.FullName).Replace("`r`n", "`n").Replace("`r", "`n")
     [IO.File]::WriteAllText($script.FullName, $text, $utf8)
 }
-& (Join-Path $PSScriptRoot 'verify-module.ps1') -Staging $staging
+& (Join-Path $PSScriptRoot 'verify-static.ps1') -Staging $staging
 if ($LASTEXITCODE -ne 0) { throw 'staging verification failed' }
 Remove-Item -LiteralPath $zip -Force -ErrorAction SilentlyContinue
 Add-Type -AssemblyName System.IO.Compression.FileSystem

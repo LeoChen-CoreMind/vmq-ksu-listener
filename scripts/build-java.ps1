@@ -4,7 +4,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$sdk = "$env:LOCALAPPDATA/Android/Sdk"
+$sdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } elseif ($env:ANDROID_SDK_ROOT) { $env:ANDROID_SDK_ROOT } else { "$env:LOCALAPPDATA/Android/Sdk" }
 $androidJar = "$sdk/platforms/android-35/android.jar"
 $d8 = "$sdk/build-tools/35.0.1/d8.bat"
 $moduleRoot = Split-Path -Parent $PSScriptRoot
