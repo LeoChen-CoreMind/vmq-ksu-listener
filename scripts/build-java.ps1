@@ -29,7 +29,7 @@ if ($sources.Count -eq 0) {
     throw "No Java sources found under $sourceRoot"
 }
 
-& javac --release 8 -classpath $androidJar -d $classes $sources
+& javac -encoding UTF-8 --release 8 -classpath $androidJar -d $classes $sources
 if ($LASTEXITCODE -ne 0) {
     throw "javac failed with exit code $LASTEXITCODE"
 }
@@ -41,7 +41,7 @@ if ($RunJvmTests) {
         throw "No Java tests found under $testRoot"
     }
 
-    & javac --release 8 -classpath "$androidJar;$classes" -d $testClasses $testSources
+    & javac -encoding UTF-8 --release 8 -classpath "$androidJar;$classes" -d $testClasses $testSources
     if ($LASTEXITCODE -ne 0) {
         throw "test javac failed with exit code $LASTEXITCODE"
     }
