@@ -190,6 +190,9 @@ public final class Main {
                     try {
                         Optional<PaymentEvent> parsed = PaymentParser.parse(packageName, key, postTime, title, text, bigText, subText);
                         if (!parsed.isPresent()) {
+                            if (PaymentParser.ambiguousAmounts(title, text, bigText, subText)) {
+                                logs.append("info", "-", "通知包含多个不同金额，未自动入账 package=" + packageName);
+                            }
                             if ("debug".equals(config.logLevel)) {
                                 logs.append("debug", "-", RuntimeLogMessages.parserMiss(packageName));
                                 updateState(values("lastParserMissAt", System.currentTimeMillis(),

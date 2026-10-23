@@ -68,7 +68,7 @@ public final class VmqNotificationListener extends NotificationListenerService {
         Bundle extras = androidNotification.extras;
         callback.onNotification(notification.getPackageName(), notification.getKey(), notification.getPostTime(),
                 text(extras, Notification.EXTRA_TITLE), text(extras, Notification.EXTRA_TEXT),
-                text(extras, Notification.EXTRA_BIG_TEXT), text(extras, Notification.EXTRA_SUB_TEXT));
+                expandedText(extras), text(extras, Notification.EXTRA_SUB_TEXT));
         return true;
     }
 
@@ -135,6 +135,19 @@ public final class VmqNotificationListener extends NotificationListenerService {
         return "com.tencent.mm".equals(packageName)
                 || "com.tencent.wework".equals(packageName)
                 || "com.eg.android.AlipayGphone".equals(packageName);
+    }
+
+    private static String expandedText(Bundle extras) {
+        if (extras == null) return "";
+        CharSequence[] lines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES);
+        String[] fields = new String[lines == null ? 1 : lines.length + 1];
+        fields[0] = text(extras, Notification.EXTRA_BIG_TEXT);
+        if (lines != null) {
+            for (int index = 0; index < lines.length; index++) {
+                fields[index + 1] = lines[index] == null ? null : lines[index].toString();
+            }
+        }
+        return PaymentParser.join(fields);
     }
 
     private static String text(Bundle extras, String key) {

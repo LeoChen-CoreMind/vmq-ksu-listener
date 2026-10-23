@@ -10,6 +10,10 @@ public final class PaymentParserTest {
         verifyWechatPayment();
         verifyWechatPaymentWithoutArrivalSuffix();
         verifyWechatPaymentWithCurrencySymbol();
+        verifyWechatRewardPayment();
+        verifyRewardExpandedFieldsAndDeduplication();
+        verifyRejectsInvalidRewardNotifications();
+        verifyRejectsAmbiguousAmounts();
         verifyExpandedNotificationFields();
         verifyAllOriginalWechatTitles();
         verifyWeWorkPayment();
@@ -39,6 +43,85 @@ public final class PaymentParserTest {
                 "\u5fae\u4fe1\u652f\u4ed8",
                 "[4\u6761]\u5fae\u4fe1\u652f\u4ed8: \u4e2a\u4eba\u6536\u6b3e\u7801\u5230\u8d26\u00a51.00");
         require("1.00".equals(event.price), "wechat currency-symbol notification price");
+    }
+
+    private static void verifyWechatRewardPayment() {
+        PaymentEvent event = parse("com.tencent.mm", "reward-screenshot", 1020L,
+                "微信支付", "[2条]微信支付: 二维码赞赏到账1.00元");
+        require(event.type == 1 && "wechat".equals(event.provider), "reward uses the existing wechat provider");
+        require("1.00".equals(event.price), "notification count must not be parsed as reward amount");
+        String[][] amounts = {
+                {"1", "1.00"}, {"1.0", "1.00"}, {"0.01", "0.01"},
+                {"10.01", "10.01"}, {"999999.99", "999999.99"},
+                {" ¥ 2.34 ", "2.34"}, {"￥12.30", "12.30"}};
+        for (int index = 0; index < amounts.length; index++) {
+            PaymentEvent reward = parse("com.tencent.mm", "reward-amount-" + index, 1021L + index,
+                    "微信支付", "二维码赞赏到账" + amounts[index][0] + "元");
+            require(amounts[index][1].equals(reward.price), "reward normalization " + amounts[index][0]);
+        }
+    }
+
+    private static void verifyRewardExpandedFieldsAndDeduplication() {
+        String reward = "二维码赞赏到账1.00元";
+        String expanded = PaymentParser.join(" " + reward + "\r\n收款提醒", null, "",
+                reward, "\r\n" + reward + "\n");
+        require((reward + "\n收款提醒").equals(expanded), "expanded notification lines must be deduplicated");
+        PaymentEvent single = parse("com.tencent.mm", "reward-fields", 1030L, "微信支付", reward);
+        Optional<PaymentEvent> duplicate = PaymentParser.parse("com.tencent.mm", "reward-fields", 1030L,
+                "微信支付", reward, expanded, reward);
+        require(duplicate.isPresent() && single.eventId.equals(duplicate.get().eventId),
+                "duplicate fields must retain a single stable event ID");
+        Optional<PaymentEvent> bigText = PaymentParser.parse("com.tencent.mm", "reward-big-text", 1031L,
+                "微信支付", "[2条]微信支付", expanded, null);
+        require(bigText.isPresent() && "1.00".equals(bigText.get().price), "reward must parse expanded text");
+        Optional<PaymentEvent> subText = PaymentParser.parse("com.tencent.mm", "reward-sub-text", 1032L,
+                "微信支付", null, null, reward);
+        require(subText.isPresent() && "1.00".equals(subText.get().price), "reward must parse subText");
+    }
+
+    private static void verifyRejectsInvalidRewardNotifications() {
+        String[] invalidAmounts = {"0", "0.001", "-1.00", "+1.00", "1.001",
+                "1000000.00", "1,000.00", "1..00", ""};
+        for (String amount : invalidAmounts) {
+            String invalid = "二维码赞赏到账" + amount + "元";
+            require(!PaymentParser.parse("com.tencent.mm", "reward-invalid", 1040L,
+                    "微信支付", invalid, null, null).isPresent(), "invalid reward amount " + amount);
+            require(!PaymentParser.parse("com.tencent.mm", "reward-invalid-expanded", 1041L,
+                    "微信支付", "二维码赞赏到账1.00元", invalid, null).isPresent(),
+                    "valid field must not mask an invalid reward field " + amount);
+        }
+        String[][] rejected = {
+                {"com.example.other", "微信支付", "二维码赞赏到账1.00元"},
+                {"com.tencent.wework", "企业微信", "二维码赞赏到账1.00元"},
+                {"com.tencent.mm", "新消息", "二维码赞赏到账1.00元"},
+                {"com.tencent.mm", "通知-微信支付", "二维码赞赏到账1.00元"},
+                {"com.tencent.mm", "微信支付", "已支付1.00元，二维码赞赏到账1.00元"},
+                {"com.tencent.mm", "微信支付", "到账1.00元"},
+                {"com.tencent.mm", "微信支付", "[2条]微信支付: 二维码赞赏到账"}};
+        for (String[] notification : rejected) {
+            require(!PaymentParser.parse(notification[0], "reward-reject", 1042L,
+                    notification[1], notification[2], null, null).isPresent(),
+                    "reward requires the wechat source, payment title, and valid incoming amount");
+        }
+    }
+
+    private static void verifyRejectsAmbiguousAmounts() {
+        require(!PaymentParser.ambiguousAmounts("[2条]二维码赞赏到账1.00元", "二维码赞赏到账1元"),
+                "equivalent amounts and notification counts are not ambiguous");
+        require(PaymentParser.ambiguousAmounts("1.001元", "1.002元"),
+                "distinct amounts must not be hidden by rounding");
+        require(!PaymentParser.parse("com.tencent.mm", "reward-ambiguous", 1043L,
+                "微信支付", "[2条]二维码赞赏到账1.00元", "二维码赞赏到账2.00元", null).isPresent(),
+                "multiple reward amounts must be rejected");
+        require(!PaymentParser.parse("com.tencent.mm", "reward-mixed", 1044L,
+                "微信支付", "二维码赞赏到账1.00元", "个人收款码到账¥2.00", null).isPresent(),
+                "mixed ordinary and reward amounts must be rejected");
+        require(!PaymentParser.parse("com.tencent.mm", "wechat-ambiguous", 1045L,
+                "微信支付", "收款到账1.00元", "收款到账2.00元", null).isPresent(),
+                "multiple ordinary amounts must be rejected");
+        require(!PaymentParser.parse("com.eg.android.AlipayGphone", "alipay-ambiguous", 1046L,
+                "成功收款1.00元", "已转入余额，收款2.00元", null, null).isPresent(),
+                "conflicting alipay amounts must be rejected");
     }
 
     private static void verifyExpandedNotificationFields() {

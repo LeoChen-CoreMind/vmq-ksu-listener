@@ -6,8 +6,10 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,6 +18,9 @@ public final class PaymentParser {
     private static final String WEWORK_PACKAGE = "com.tencent.wework";
     private static final String ALIPAY_PACKAGE = "com.eg.android.AlipayGphone";
     private static final Pattern MONEY_PATTERN = Pattern.compile("\\d+(?:\\.\\d+)?");
+    private static final String REWARD_PREFIX = "二维码赞赏到账";
+    private static final Pattern REWARD_PATTERN = Pattern.compile("二维码赞赏到账\\s*[¥￥]?\\s*(\\d+(?:\\.\\d{1,2})?)\\s*元");
+    private static final Pattern CURRENCY_PATTERN = Pattern.compile("(?:[¥￥]\\s*(\\d+(?:\\.\\d+)?)|(\\d+(?:\\.\\d+)?)\\s*元)");
     private static final String[] MONEY_KEYWORDS = {"收款", "付款", "到账", "转入"};
     private static final String[] WECHAT_PAYMENT_TITLES = {
             "微信支付",
@@ -72,7 +77,23 @@ public final class PaymentParser {
                     break;
                 }
             }
-            if (!paymentTitle || !content.contains("收款") || content.contains("已支付")) return null;
+            if (!paymentTitle || content.contains("已支付")) return null;
+            if (WECHAT_PACKAGE.equals(packageName) && content.contains(REWARD_PREFIX)) {
+                Matcher rewards = REWARD_PATTERN.matcher(content);
+                Set<String> amounts = new LinkedHashSet<String>();
+                int start = content.indexOf(REWARD_PREFIX);
+                while (start >= 0) {
+                    rewards.region(start, content.length());
+                    if (!rewards.lookingAt()) return null;
+                    String price = normalizePrice(rewards.group(1));
+                    if (price == null) return null;
+                    amounts.add(price);
+                    start = content.indexOf(REWARD_PREFIX, rewards.end());
+                }
+                if (amounts.size() != 1 || ambiguousAmounts(content)) return null;
+                return new Provider(1, "wechat", amounts.iterator().next());
+            }
+            if (!content.contains("收款") || ambiguousAmounts(content)) return null;
             return new Provider(1, WECHAT_PACKAGE.equals(packageName) ? "wechat" : "wework", getMoney(content));
         }
 
@@ -81,6 +102,7 @@ public final class PaymentParser {
                 || content.contains("通过扫码向你付款");
         boolean staffPayment = title.contains("店员通") || content.contains("支付宝成功收款");
         if (!normalPayment && !staffPayment) return null;
+        if (ambiguousAmounts(join(title, content))) return null;
 
         String money = normalPayment ? getMoney(title) : getMoney(content);
         if (money == null || money.isEmpty()) money = normalPayment ? getMoney(content) : getMoney(title);
@@ -88,15 +110,30 @@ public final class PaymentParser {
         return new Provider(2, "alipay", money);
     }
 
-    private static String join(String... values) {
+    static String join(String... values) {
         StringBuilder builder = new StringBuilder();
+        Set<String> seen = new LinkedHashSet<String>();
         for (String value : values) {
-            if (value != null && !value.isEmpty()) {
-                if (builder.length() > 0) builder.append('\n');
-                builder.append(value);
+            if (value == null) continue;
+            for (String line : value.split("\\r\\n|\\r|\\n")) {
+                String trimmed = line.trim();
+                if (!trimmed.isEmpty() && seen.add(trimmed)) {
+                    if (builder.length() > 0) builder.append('\n');
+                    builder.append(trimmed);
+                }
             }
         }
         return builder.toString();
+    }
+
+    static boolean ambiguousAmounts(String... values) {
+        Set<String> amounts = new LinkedHashSet<String>();
+        Matcher matcher = CURRENCY_PATTERN.matcher(join(values));
+        while (matcher.find()) {
+            String raw = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+            amounts.add(new BigDecimal(raw).stripTrailingZeros().toPlainString());
+        }
+        return amounts.size() > 1;
     }
 
     static String getMoney(String content) {

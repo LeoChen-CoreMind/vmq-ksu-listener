@@ -13,6 +13,8 @@ public final class MainRuntimeLoggingTest {
     public static void run() throws Exception {
         verifyDisabledRuntimeMessage();
         verifyParserMissMessage();
+        verifyRewardNotificationLogging();
+        verifyAmbiguousNotificationLogging();
         verifyAcceptedPaymentMessage();
         verifyProviderNamesForHumanLogs();
         verifyStandardRuntimeMessages();
@@ -36,6 +38,32 @@ public final class MainRuntimeLoggingTest {
         try {
             notify(runtime, "com.tencent.mm", "miss-key", 1000L, "新消息", "普通通知");
             waitForLog(directory, "未匹配支付通知 package=com.tencent.mm");
+        } finally {
+            invoke(runtime, "close");
+        }
+    }
+
+    private static void verifyRewardNotificationLogging() throws Exception {
+        Path directory = Files.createTempDirectory("vmq-runtime-reward-test");
+        Object runtime = newRuntime(writeConfig(directory, true, "info"));
+        try {
+            notify(runtime, "com.tencent.mm", "reward-key", 1001L,
+                    "微信支付", "[2条]微信支付: 二维码赞赏到账1.00元");
+            waitForLog(directory, "已接收支付 来源=微信 金额=1.00");
+        } finally {
+            invoke(runtime, "close");
+        }
+    }
+
+    private static void verifyAmbiguousNotificationLogging() throws Exception {
+        Path directory = Files.createTempDirectory("vmq-runtime-ambiguous-test");
+        Object runtime = newRuntime(writeConfig(directory, true, "info"));
+        String notification = "二维码赞赏到账1.00元\n二维码赞赏到账2.00元";
+        try {
+            notify(runtime, "com.tencent.mm", "ambiguous-key", 1002L, "微信支付", notification);
+            String log = waitForLog(directory, "通知包含多个不同金额，未自动入账 package=com.tencent.mm");
+            require(!log.contains("已接收支付"), "ambiguous notification must not be accepted");
+            require(!log.contains(notification), "ambiguous log must not include notification contents");
         } finally {
             invoke(runtime, "close");
         }
